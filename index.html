@@ -230,8 +230,9 @@
         // Dla GitHub Pages musimy użyć bezpośredniego URL do pliku FBX
         // ponieważ GitHub Pages nie obsługuje Git LFS
         MODEL_FILE_LOCAL: 'workshop_01_001_30FPS.fbx', // Lokalna ścieżka
-        MODEL_FILE_REMOTE: 'https://github.com/konradmbones/Viewer_Orange/releases/download/assets/workshop_01_001_30FPS.fbx', // URL do GitHub Releases
-        USE_REMOTE_FILES: true, // Ustaw na false, aby używać lokalnych plików
+        // Używamy bezpośrednio pliku z GitHub Pages zamiast GitHub Releases (problem z CORS)
+        MODEL_FILE_REMOTE: 'workshop_01_001_30FPS.fbx', // Plik w tym samym katalogu na GitHub Pages
+        USE_REMOTE_FILES: false, // Ustaw na false lokalnie, na GitHub Pages będzie działać z lokalnym plikiem
         
         // Kolory i materiały
         BACKGROUND_COLOR: 0xcccccc,
@@ -255,6 +256,23 @@
     let currentFrame = 0;
     let maxFrame = 0;
     let animationAction;
+    
+    // Automatycznie wykryj czy jesteśmy na GitHub Pages
+    function detectEnvironment() {
+        const isGitHubPages = window.location.hostname.includes('github.io');
+        console.log('Wykryto środowisko:', isGitHubPages ? 'GitHub Pages' : 'Lokalne');
+        
+        // Jeśli jesteśmy na GitHub Pages, upewnij się, że używamy lokalnego pliku
+        // ponieważ ten plik będzie dostępny w tym samym katalogu na GitHub Pages
+        if (isGitHubPages) {
+            CONFIG.USE_REMOTE_FILES = false;
+            console.log('Automatycznie ustawiono USE_REMOTE_FILES=false dla GitHub Pages');
+        }
+    }
+    
+    // Wywołaj funkcję wykrywania środowiska
+    detectEnvironment();
+    
     init();
     animate();
 
@@ -677,15 +695,20 @@
                 infoEl.innerHTML = `Błąd ładowania modelu: <strong>${error.message || 'Nieznany błąd'}</strong><br>`;
                 infoEl.innerHTML += `Próba ładowania pliku: ${fbxPath}<br>`;
                 
-                // Dodaj specjalny komunikat dla błędu Git LFS
+                // Dodaj specjalne komunikaty dla różnych błędów
                 if (error.message && error.message.includes('Cannot find the version number')) {
                     if (fbxPath.includes('github.io') || window.location.hostname.includes('github.io')) {
                         infoEl.innerHTML += `<br><strong>Uwaga:</strong> Wygląda na to, że próbujesz załadować plik FBX z GitHub Pages, ale GitHub Pages nie obsługuje Git LFS.<br>`;
                         infoEl.innerHTML += `Aby rozwiązać ten problem:<br>`;
-                        infoEl.innerHTML += `1. Ustaw <code>CONFIG.USE_REMOTE_FILES = true</code> w kodzie<br>`;
-                        infoEl.innerHTML += `2. Utwórz GitHub Release z plikiem FBX<br>`;
-                        infoEl.innerHTML += `3. Zaktualizuj <code>CONFIG.MODEL_FILE_REMOTE</code> z poprawnym URL do pliku w GitHub Releases<br>`;
+                        infoEl.innerHTML += `1. Upewnij się, że plik FBX jest bezpośrednio w repozytorium (nie przez Git LFS)<br>`;
+                        infoEl.innerHTML += `2. Ustaw <code>CONFIG.USE_REMOTE_FILES = false</code> w kodzie<br>`;
                     }
+                } else if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+                    infoEl.innerHTML += `<br><strong>Uwaga:</strong> Wystąpił błąd CORS podczas próby pobrania pliku FBX.<br>`;
+                    infoEl.innerHTML += `Aby rozwiązać ten problem:<br>`;
+                    infoEl.innerHTML += `1. Upewnij się, że plik FBX jest bezpośrednio w repozytorium GitHub Pages<br>`;
+                    infoEl.innerHTML += `2. Ustaw <code>CONFIG.USE_REMOTE_FILES = false</code> w kodzie<br>`;
+                    infoEl.innerHTML += `3. Jeśli używasz GitHub Pages, plik powinien być dostępny w tym samym katalogu<br>`;
                 }
                 
                 infoEl.innerHTML += 'Sprawdź konsolę przeglądarki (F12) aby zobaczyć więcej szczegółów.';
